@@ -17,6 +17,8 @@ public class Student {
         public String getRoleName() { return roleName; }
 
         public static Role fromString(String text) {
+            if (text == null) return null;
+
             for (Role role : Role.values()) {
                 if (role.roleName.equalsIgnoreCase(text)) {
                     return role;
@@ -40,8 +42,8 @@ public class Student {
         this.contact = contact;
         this.name = name;
         this.department = department;
-        this.role = Role.MEMBER;  // 기본값은 일반 멤버
-        this.joinDate = LocalDate.now();
+        this.role = null;
+        this.joinDate = null;
         this.clubId = null;
     }
 

@@ -3,6 +3,7 @@ package clubManagement;
 import clubManagement.auth.LoginManager;
 import clubManagement.auth.LoginManager.LoginResult;
 import clubManagement.auth.UserRole;
+import clubManagement.menu.AdminMenuHandler;
 import clubManagement.utils.DatabaseConnection;
 
 import java.sql.Connection;
@@ -83,8 +84,9 @@ public class Main {
                 try {
                     switch (choice) {
                         case 1 -> {
-                            // 조회
-                            System.out.println("Find operation executed");
+                            // 학생관리
+                            AdminMenuHandler adminMenuHandler = new AdminMenuHandler(conn, scanner);
+                            adminMenuHandler.handleStudentManagement();
                         }
                         case 2 -> {
                             // 삽입
@@ -115,7 +117,7 @@ public class Main {
     private static void displayMainMenu(UserRole role) {
         System.out.println("------------------------------------------------------------");
         if (role == UserRole.ADMIN) {
-            System.out.println("1. View All Clubs\t2. Register New Club");
+            System.out.println("1. Manage Students\t2. Register New Club");
             System.out.println("3. View All Activities\t4. View All Projects");
             System.out.println("5. View Budget Reports\t6. Manage Club Status");
         } else {  // PRESIDENT

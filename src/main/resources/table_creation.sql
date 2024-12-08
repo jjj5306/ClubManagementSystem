@@ -1,8 +1,7 @@
 CREATE
 DATABASE IF NOT EXISTS club_management;
 
-USE
-club_management;
+USE club_management;
 
 -- 지도교수 테이블
 CREATE TABLE professors
@@ -27,8 +26,8 @@ CREATE TABLE students
     contact    VARCHAR(20) UNIQUE NOT NULL,
     name       VARCHAR(50)        NOT NULL,
     department VARCHAR(50)        NOT NULL,
-    role       VARCHAR(50)        NOT NULL,
-    join_date  DATE               NOT NULL,
+    role       VARCHAR(50),
+    join_date  DATE,
     club_id    VARCHAR(20)
 );
 
@@ -42,8 +41,8 @@ CREATE TABLE clubs
     club_name      VARCHAR(100) UNIQUE NOT NULL,
     activity_field VARCHAR(50)         NOT NULL,
     member_count   INT                 NOT NULL,
-    page_url       VARCHAR(200) UNIQUE NOT NULL,
-    club_info      TEXT UNIQUE         NOT NULL,
+    page_url       VARCHAR(200) UNIQUE,
+    club_info      TEXT,
     FOREIGN KEY (president_id) REFERENCES students (student_id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
@@ -118,7 +117,7 @@ CREATE TABLE project_participants
 );
 
 -- 주요활동 테이블
-CREATE TABLE main_activities
+CREATE TABLE activities
 (
     club_id       VARCHAR(20),
     activity_name VARCHAR(100),
