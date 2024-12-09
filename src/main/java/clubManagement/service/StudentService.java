@@ -1,8 +1,9 @@
-package clubManagement.service.admin;
+package clubManagement.service;
 
 
 import clubManagement.domain.Student;
 import java.sql.*;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -109,7 +110,7 @@ public class StudentService {
                 rs.getString("club_id")
         );
     }
-    
+
     //학생 수정
     public boolean updateStudent(Student student) throws SQLException {
         // 학생 검사
@@ -191,6 +192,120 @@ public class StudentService {
             return result > 0;
         } catch (SQLException e) {
             throw new SQLException("동아리 등록 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    public boolean updateStudentClubInfo(String studentId, String newClubId, Student.Role newRole, LocalDate newJoinDate) throws SQLException {
+        // 1. 학생 검사
+        Student student = getStudentById(studentId);
+        if (student == null) {
+            throw new SQLException("존재하지 않는 학생입니다.");
+        }
+        if (student.getClubId() == null) {
+            throw new SQLException("동아리에 가입되지 않은 학생입니다.");
+        }
+
+        // 2. 새로운 동아리 ID가 제공된 경우, 동아리 존재 여부 확인
+        if (newClubId != null && !newClubId.equals(student.getClubId())) {
+            String checkClubSql = String.format(
+                    "SELECT status_name FROM clubs WHERE club_id = '%s'",
+                    newClubId
+            );
+
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(checkClubSql);
+
+            if (!rs.next()) {
+                throw new SQLException("존재하지 않는 동아리입니다.");
+            }
+            if (!rs.getString("status_name").equals("active")) {
+                throw new SQLException("현재 활동 중인 동아리가 아닙니다.");
+            }
+        }
+
+        // 3. 정보 업데이트
+        StringBuilder updateSql = new StringBuilder("UPDATE students SET ");
+        boolean needComma = false;
+
+        if (newClubId != null && !newClubId.equals(student.getClubId())) {
+            updateSql.append("club_id = '").append(newClubId).append("'");
+            needComma = true;
+        }
+        if (newRole != null) {
+            if (needComma) updateSql.append(", ");
+            updateSql.append("role = '").append(newRole.getRoleName()).append("'");
+            needComma = true;
+        }
+        if (newJoinDate != null) {
+            if (needComma) updateSql.append(", ");
+            updateSql.append("join_date = '").append(newJoinDate.format(DateTimeFormatter.ISO_DATE)).append("'");
+        }
+
+        updateSql.append(" WHERE student_id = '").append(studentId).append("'");
+
+        try {
+            Statement stmt = conn.createStatement();
+            int result = stmt.executeUpdate(updateSql.toString());
+
+            // 4. 동아리 회원 수 업데이트 (동아리가 변경된 경우)
+            if (result > 0 && newClubId != null && !newClubId.equals(student.getClubId())) {
+                // 이전 동아리 회원 수 감소
+                stmt.executeUpdate(String.format(
+                        "UPDATE clubs SET member_count = member_count - 1 WHERE club_id = '%s'",
+                        student.getClubId()
+                ));
+                // 새로운 동아리 회원 수 증가
+                stmt.executeUpdate(String.format(
+                        "UPDATE clubs SET member_count = member_count + 1 WHERE club_id = '%s'",
+                        newClubId
+                ));
+            }
+
+            return result > 0;
+        } catch (SQLException e) {
+            throw new SQLException("동아리 정보 수정 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    public boolean leaveClub(String studentId) throws SQLException {
+        // 1. 학생 검사
+        Student student = getStudentById(studentId);
+        if (student == null) {
+            throw new SQLException("존재하지 않는 학생입니다.");
+        }
+        if (student.getClubId() == null) {
+            throw new SQLException("동아리에 가입되지 않은 학생입니다.");
+        }
+        if (student.getRole() == Student.Role.PRESIDENT) {
+            throw new SQLException("동아리 회장은 탈퇴할 수 없습니다.");
+        }
+
+        String oldClubId = student.getClubId(); // 이전 동아리 ID 저장
+
+        // 2. 학생 정보 업데이트 (동아리 ID, 역할, 가입일 초기화)
+        String updateSql = String.format(
+                "UPDATE students SET club_id = NULL, role = NULL, join_date = NULL " +
+                        "WHERE student_id = '%s'",
+                studentId
+        );
+
+        try {
+            Statement stmt = conn.createStatement();
+            int result = stmt.executeUpdate(updateSql);
+
+            // 3. 동아리 회원 수 감소
+            if (result > 0) {
+                String updateMemberCountSql = String.format(
+                        "UPDATE clubs SET member_count = member_count - 1 " +
+                                "WHERE club_id = '%s'",
+                        oldClubId
+                );
+                stmt.executeUpdate(updateMemberCountSql);
+            }
+
+            return result > 0;
+        } catch (SQLException e) {
+            throw new SQLException("동아리 탈퇴 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
 

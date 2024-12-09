@@ -1,19 +1,20 @@
 package clubManagement.menu;
 
 import clubManagement.domain.Student;
-import clubManagement.service.admin.StudentService;
+import clubManagement.service.StudentService;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Scanner;
 
-public class AdminMenuHandler {
+public class StudentMenuHandler {
     private final Connection conn;
     private final Scanner scanner;
     private final StudentService studentService;
 
-    public AdminMenuHandler(Connection conn, Scanner scanner) {
+    public StudentMenuHandler(Connection conn, Scanner scanner) {
         this.conn = conn;
         this.scanner = scanner;
         this.studentService = new StudentService(conn);
@@ -25,10 +26,12 @@ public class AdminMenuHandler {
             System.out.println("1. 학생 등록");
             System.out.println("2. 전체 학생 조회");
             System.out.println("3. 특정 학생 조회");
-            System.out.println("4. 학생 정보 수정");
-            System.out.println("5. 학생 삭제");
-            System.out.println("6. 동아리 가입 처리");
-            System.out.println("7. 뒤로 가기");
+            System.out.println("4. 학생 기본 정보 수정");
+            System.out.println("5. 동아리 가입 처리");
+            System.out.println("6. 학생 동아리 정보 수정");
+            System.out.println("7. 학생 삭제");
+            System.out.println("8. 동아리 탈퇴 처리");
+            System.out.println("9. 뒤로 가기");
             System.out.println("==============================");
             System.out.print("메뉴 선택: ");
 
@@ -41,9 +44,11 @@ public class AdminMenuHandler {
                     case 2 -> viewAllStudents();
                     case 3 -> viewStudent();
                     case 4 -> updateStudent();
-                    case 5 -> deleteStudent();
-                    case 6 -> registerStudentToClub();
-                    case 7 -> {
+                    case 5 -> registerStudentToClub();
+                    case 6 -> updateStudentClubInfo();
+                    case 7 -> deleteStudent();
+                    case 8 -> leaveClub();
+                    case 9 -> {
                         return;
                     }
                     default -> System.out.println("잘못된 메뉴 선택입니다.");
@@ -175,19 +180,19 @@ public class AdminMenuHandler {
             System.out.println("\n수정할 정보를 입력하세요.");
             System.out.println("(변경하지 않을 항목은 Enter키를 누르세요.)");
 
-            System.out.print("이름(" + student.getName() + "): ");
+            System.out.print("변경할 이름(" + student.getName() + "): ");
             String name = scanner.nextLine();
             if (!name.trim().isEmpty()) {
                 student.setName(name);
             }
 
-            System.out.print("학과(" + student.getDepartment() + "): ");
+            System.out.print("변경할 학과(" + student.getDepartment() + "): ");
             String department = scanner.nextLine();
             if (!department.trim().isEmpty()) {
                 student.setDepartment(department);
             }
 
-            System.out.print("연락처(" + student.getContact() + "): ");
+            System.out.print("변경할 연락처(" + student.getContact() + "): ");
             String contact = scanner.nextLine();
             if (!contact.trim().isEmpty()) {
                 student.setContact(contact);
@@ -226,4 +231,101 @@ public class AdminMenuHandler {
             System.out.println("error : " + e.getMessage());
         }
     }
+
+    private void updateStudentClubInfo() {
+        try {
+            System.out.println("\n========== 학생 동아리 정보 수정 ==========");
+
+            System.out.print("학번: ");
+            String studentId = scanner.nextLine();
+
+            // 학생 존재 여부 및 동아리 가입 여부 확인
+            Student student = studentService.getStudentById(studentId);
+            if (student == null) {
+                System.out.println("존재하지 않는 학생입니다.");
+                return;
+            }
+            if (student.getClubId() == null) {
+                System.out.println("동아리에 가입되지 않은 학생입니다.");
+                return;
+            }
+
+            System.out.println("\n현재 동아리 정보:");
+            System.out.println("소속 동아리: " + student.getClubId());
+            System.out.println("역할: " + student.getRoleName());
+            System.out.println("가입일: " + student.getJoinDate());
+
+            System.out.println("\n수정할 정보를 입력하세요. (변경하지 않을 항목은 Enter키를 누르세요)");
+
+            System.out.print("변경할 동아리 ID(" + student.getClubId() + "): ");
+            String newClubId = scanner.nextLine();
+            if (newClubId.trim().isEmpty()) {
+                newClubId = null;
+            }
+
+            System.out.print("변경할 역할(" + student.getRoleName() + ") [member/executive/president]: ");
+            String roleStr = scanner.nextLine();
+            Student.Role newRole = roleStr.trim().isEmpty() ? null : Student.Role.fromString(roleStr);
+
+            System.out.print("변경할 가입일(" + student.getJoinDate() + ") [YYYY-MM-DD]: ");
+            String dateStr = scanner.nextLine();
+            LocalDate newJoinDate = dateStr.trim().isEmpty() ? null : LocalDate.parse(dateStr);
+
+            if (studentService.updateStudentClubInfo(studentId, newClubId, newRole, newJoinDate)) {
+                System.out.println("동아리 정보가 성공적으로 수정되었습니다.");
+                Student updatedStudent = studentService.getStudentById(studentId);
+                System.out.println("\n수정된 정보:");
+                printStudentInfo(updatedStudent);
+            } else {
+                System.out.println("동아리 정보 수정에 실패했습니다.");
+            }
+
+        } catch (Exception e) {
+            System.out.println("오류 발생: " + e.getMessage());
+        }
+    }
+
+    private void leaveClub() {
+        try {
+            System.out.println("\n========== 동아리 탈퇴 처리 ==========");
+
+            System.out.print("학번: ");
+            String studentId = scanner.nextLine();
+
+            // 학생 검사
+            Student student = studentService.getStudentById(studentId);
+            if (student == null) {
+                System.out.println("존재하지 않는 학생입니다.");
+                return;
+            }
+            if (student.getClubId() == null) {
+                System.out.println("동아리에 가입되지 않은 학생입니다.");
+                return;
+            }
+
+            System.out.println("\n현재 동아리 정보:");
+            System.out.println("소속 동아리: " + student.getClubId());
+            System.out.println("역할: " + student.getRoleName());
+            System.out.println("가입일: " + student.getJoinDate());
+
+            // 탈퇴 확인
+            System.out.print("\n정말로 탈퇴하시겠습니까? (y/n): ");
+            String confirm = scanner.nextLine();
+
+            if (!confirm.equalsIgnoreCase("y")) {
+                System.out.println("탈퇴가 취소되었습니다.");
+                return;
+            }
+
+            if (studentService.leaveClub(studentId)) {
+                System.out.println("동아리 탈퇴가 완료되었습니다.");
+            } else {
+                System.out.println("동아리 탈퇴에 실패했습니다.");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("error : " + e.getMessage());
+        }
+    }
+
 }

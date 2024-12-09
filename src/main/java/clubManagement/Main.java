@@ -1,67 +1,72 @@
 package clubManagement;
 
-import clubManagement.auth.LoginManager;
-import clubManagement.auth.LoginManager.LoginResult;
-import clubManagement.auth.UserRole;
-import clubManagement.menu.AdminMenuHandler;
+import clubManagement.menu.StudentMenuHandler;
 import clubManagement.utils.DatabaseConnection;
 
 import java.sql.Connection;
 import java.util.Scanner;
 
 public class Main {
-    private static LoginResult currentUser = null;
-
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         Connection conn = null;
-        LoginManager loginManager = null;
+        StudentMenuHandler studentMenuHandler = null;
 
         System.out.println("2020039071 조준화 Database System Term Project - Club Management System\n");
 
         while (true) {
-            if (currentUser == null) {
-                System.out.println("------------------------------------------------------------");
-                System.out.println("1. Database Connection\t\t2. Login\t\t3. Quit");
-                System.out.println("------------------------------------------------------------");
-                System.out.print("Select menu: ");
-                int choice = scanner.nextInt();
+            displayMainMenu();
+            System.out.print("Select menu: ");
+            int choice = scanner.nextInt();
 
+            try {
                 switch (choice) {
                     case 1 -> {
-                        //main menu, database connection
+                        // Database Connection
                         try {
                             conn = DatabaseConnection.getConnection();
-                            loginManager = new LoginManager(conn);
+                            studentMenuHandler = new StudentMenuHandler(conn, scanner);
                             System.out.println("Database connection successful!");
                         } catch (Exception e) {
                             System.out.println("Database connection failed: " + e.getMessage());
                         }
                     }
                     case 2 -> {
-                        //main menu, login
                         if (conn == null) {
                             System.out.println("Please connect to database first!");
                             continue;
                         }
-                        System.out.print("Enter your ID: ");
-                        String studentId = scanner.next();
-
-                        try {
-                            currentUser = loginManager.validateUser(studentId);
-
-                            if (currentUser.getRole() == UserRole.INVALID) {
-                                System.out.println("잘못된 ID입니다.");
-                                currentUser = null;
-                            } else {
-                                System.out.println("Login successful! Welcome " +
-                                        (currentUser.getRole() == UserRole.ADMIN ? "Admin" : "Club President"));
-                            }
-                        } catch (Exception e) {
-                            System.out.println("Login failed: " + e.getMessage());
-                        }
+                        studentMenuHandler.handleStudentManagement();
                     }
                     case 3 -> {
+                        if (conn == null) {
+                            System.out.println("Please connect to database first!");
+                            continue;
+                        }
+                        System.out.println("Register New Club");
+                    }
+                    case 4 -> {
+                        if (conn == null) {
+                            System.out.println("Please connect to database first!");
+                            continue;
+                        }
+                        System.out.println("View All Activities");
+                    }
+                    case 5 -> {
+                        if (conn == null) {
+                            System.out.println("Please connect to database first!");
+                            continue;
+                        }
+                        System.out.println("View Budget Reports");
+                    }
+                    case 6 -> {
+                        if (conn == null) {
+                            System.out.println("Please connect to database first!");
+                            continue;
+                        }
+                        System.out.println("Manage Club Status");
+                    }
+                    case 99 -> {
                         if (conn != null) {
                             try {
                                 conn.close();
@@ -75,57 +80,20 @@ public class Main {
                     }
                     default -> System.out.println("Invalid choice. Please try again.");
                 }
-            } else {
-                //로그인 이후 화면
-                displayMainMenu(currentUser.getRole());
-                System.out.print("Select menu: ");
-                int choice = scanner.nextInt();
-
-                try {
-                    switch (choice) {
-                        case 1 -> {
-                            // 학생관리
-                            AdminMenuHandler adminMenuHandler = new AdminMenuHandler(conn, scanner);
-                            adminMenuHandler.handleStudentManagement();
-                        }
-                        case 2 -> {
-                            // 삽입
-                            System.out.println("Insert operation executed");
-                        }
-                        case 98 -> {
-                            // 로그아웃
-                            currentUser = null;
-                            System.out.println("Logged out successfully");
-                        }
-                        case 99 -> {
-                            if (conn != null) conn.close();
-                            scanner.close();
-                            System.out.println("Bye...\n");
-                            return;
-                        }
-                        default -> System.out.println("Feature in preparation.");
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error: " + e.getMessage());
-                    e.printStackTrace();
-                }
+            } catch (Exception e) {
+                System.err.println("Error: " + e.getMessage());
+                e.printStackTrace();
             }
             System.out.println("\n");
         }
     }
 
-    private static void displayMainMenu(UserRole role) {
+    private static void displayMainMenu() {
         System.out.println("------------------------------------------------------------");
-        if (role == UserRole.ADMIN) {
-            System.out.println("1. Manage Students\t2. Register New Club");
-            System.out.println("3. View All Activities\t4. View All Projects");
-            System.out.println("5. View Budget Reports\t6. Manage Club Status");
-        } else {  // PRESIDENT
-            System.out.println("1. View Club Info\t2. Update Club Info");
-            System.out.println("3. Manage Activities\t4. Manage Projects");
-            System.out.println("5. Submit Budget Report\t6. View Members");
-        }
-        System.out.println("98. Logout\t\t99. Quit");
+        System.out.println("1. Database Connection\t2. Manage Students");
+        System.out.println("3. Register New Club\t4. View All Activities");
+        System.out.println("5. View Budget Reports\t6. Manage Club Status");
+        System.out.println("99. Quit");
         System.out.println("------------------------------------------------------------");
     }
 }
