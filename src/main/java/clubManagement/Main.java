@@ -1,5 +1,7 @@
 package clubManagement;
 
+import clubManagement.menu.ClubMenuHandler;
+import clubManagement.menu.ProfessorMenuHandler;
 import clubManagement.menu.StudentMenuHandler;
 import clubManagement.utils.DatabaseConnection;
 
@@ -11,6 +13,8 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
         Connection conn = null;
         StudentMenuHandler studentMenuHandler = null;
+        ClubMenuHandler clubMenuHandler = null;
+        ProfessorMenuHandler professorMenuHandler = null;
 
         System.out.println("2020039071 조준화 Database System Term Project - Club Management System\n");
 
@@ -26,6 +30,8 @@ public class Main {
                         try {
                             conn = DatabaseConnection.getConnection();
                             studentMenuHandler = new StudentMenuHandler(conn, scanner);
+                            clubMenuHandler = new ClubMenuHandler(conn, scanner);
+                            professorMenuHandler = new ProfessorMenuHandler(conn, scanner);
                             System.out.println("Database connection successful!");
                         } catch (Exception e) {
                             System.out.println("Database connection failed: " + e.getMessage());
@@ -43,14 +49,14 @@ public class Main {
                             System.out.println("Please connect to database first!");
                             continue;
                         }
-                        System.out.println("Register New Club");
+                        clubMenuHandler.handleClubManagement();
                     }
                     case 4 -> {
                         if (conn == null) {
                             System.out.println("Please connect to database first!");
                             continue;
                         }
-                        System.out.println("View All Activities");
+                        professorMenuHandler.handleProfessorManagement();
                     }
                     case 5 -> {
                         if (conn == null) {
@@ -91,7 +97,7 @@ public class Main {
     private static void displayMainMenu() {
         System.out.println("------------------------------------------------------------");
         System.out.println("1. Database Connection\t2. Manage Students");
-        System.out.println("3. Register New Club\t4. View All Activities");
+        System.out.println("3. Manage Clubs\t4. Manage Professors");
         System.out.println("5. View Budget Reports\t6. Manage Club Status");
         System.out.println("99. Quit");
         System.out.println("------------------------------------------------------------");

@@ -1,6 +1,7 @@
 package clubManagement.service;
 
 import clubManagement.domain.Club;
+import clubManagement.domain.ClubStatus;
 import clubManagement.domain.Student;
 import java.sql.*;
 import java.util.ArrayList;
@@ -174,10 +175,179 @@ public class ClubService {
                 rs.getString("club_id"),
                 rs.getString("president_id"),
                 rs.getString("prof_id"),
+                ClubStatus.fromString(rs.getString("status_name")),
                 rs.getString("club_name"),
                 rs.getString("activity_field"),
+                rs.getInt("member_count"),
                 rs.getString("page_url"),
                 rs.getString("club_info")
         );
+    }
+
+    // 동아리 URL과 소개 정보 업데이트
+    public boolean updateClubInfo(String clubId, String pageUrl, String clubInfo) throws SQLException {
+        Club club = getClubById(clubId);
+        if (club == null) {
+            throw new SQLException("존재하지 않는 동아리입니다.");
+        }
+
+        StringBuilder sql = new StringBuilder("UPDATE clubs SET ");
+        List<String> updates = new ArrayList<>();
+
+        if (pageUrl != null) {
+            updates.add("page_url = " + (pageUrl.isEmpty() ? "NULL" : "'" + pageUrl + "'"));
+        }
+        if (clubInfo != null) {
+            updates.add("club_info = " + (clubInfo.isEmpty() ? "NULL" : "'" + clubInfo + "'"));
+        }
+
+        if (updates.isEmpty()) {
+            return false;
+        }
+
+        sql.append(String.join(", ", updates));
+        sql.append(" WHERE club_id = '").append(clubId).append("'");
+
+        try (Statement stmt = conn.createStatement()) {
+            int result = stmt.executeUpdate(sql.toString());
+            return result > 0;
+        } catch (SQLException e) {
+            if (e.getMessage().contains("Duplicate entry") && e.getMessage().contains("page_url")) {
+                throw new SQLException("이미 등록된 페이지 URL입니다.");
+            }
+            throw e;
+        }
+    }
+
+    // 동아리 기본 정보 수정
+    public boolean updateClubBasicInfo(String clubId, String clubName, String activityField) throws SQLException {
+        Club club = getClubById(clubId);
+        if (club == null) {
+            throw new SQLException("존재하지 않는 동아리입니다.");
+        }
+
+        String sql = String.format(
+                "UPDATE clubs SET club_name = '%s', activity_field = '%s' WHERE club_id = '%s'",
+                clubName, activityField, clubId
+        );
+
+        try (Statement stmt = conn.createStatement()) {
+            int result = stmt.executeUpdate(sql.toString());
+            return result > 0;
+        } catch (SQLException e) {
+            if (e.getMessage().contains("Duplicate entry") && e.getMessage().contains("club_name")) {
+                throw new SQLException("이미 존재하는 동아리 이름입니다.");
+            }
+            throw e;
+        }
+    }
+
+    // 동아리 상태 변경
+    public boolean updateClubStatus(String clubId, ClubStatus newStatus) throws SQLException {
+        Club club = getClubById(clubId);
+        if (club == null) {
+            throw new SQLException("존재하지 않는 동아리입니다.");
+        }
+
+        if (club.getStatusName().equals(ClubStatus.CLOSED.getStatusName())) {
+            throw new SQLException("삭제(CLOSED) 상태의 동아리는 상태를 변경할 수 없습니다.");
+        }
+
+        String sql = String.format(
+                "UPDATE clubs SET status_name = '%s' WHERE club_id = '%s'",
+                newStatus.getStatusName(), clubId
+        );
+
+        try (Statement stmt = conn.createStatement()) {
+            int result = stmt.executeUpdate(sql.toString());
+            return result > 0;
+        }
+    }
+
+    // 동아리 삭제 (closed로 변경)
+    public boolean deleteClub(String clubId) throws SQLException {
+        // 1. 동아리 존재 여부 확인
+        Club club = getClubById(clubId);
+        if (club == null) {
+            throw new SQLException("존재하지 않는 동아리입니다.");
+        }
+
+        // 2. 동아리 상태를 CLOSED로 변경
+        String updateStatusSql = String.format(
+                "UPDATE clubs SET status_name = '%s' WHERE club_id = '%s'",
+                ClubStatus.CLOSED.getStatusName(), clubId
+        );
+
+        try (Statement stmt = conn.createStatement()) {
+            int statusResult = stmt.executeUpdate(updateStatusSql);
+            if (statusResult <= 0) {
+                return false;
+            }
+
+            // 3. 소속 학생들의 정보 초기화 (회장 포함)
+            String updateMembersSql = String.format(
+                    "UPDATE students SET club_id = NULL, role = NULL, join_date = NULL " +
+                            "WHERE club_id = '%s'", clubId
+            );
+            stmt.executeUpdate(updateMembersSql);
+
+            // 4. 동아리의 회원 수를 0으로 변경
+            String updateClubSql = String.format(
+                    "UPDATE clubs SET member_count = 0 WHERE club_id = '%s'", clubId
+            );
+            stmt.executeUpdate(updateClubSql);
+
+            return true;
+        }
+    }
+
+    // 특정 상태의 동아리 목록 조회
+    public List<Club> getClubsByStatus(ClubStatus status) throws SQLException {
+        List<Club> clubs = new ArrayList<>();
+        String sql = String.format(
+                "SELECT * FROM clubs WHERE status_name = '%s' ORDER BY club_id",
+                status.getStatusName()
+        );
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                clubs.add(createClubFromResultSet(rs));
+            }
+        }
+
+        return clubs;
+    }
+
+    // 동아리 회원 목록 조회
+    public List<Student> getClubMembers(String clubId) throws SQLException {
+        // 동아리 존재 여부 확인
+        Club club = getClubById(clubId);
+        if (club == null) {
+            throw new SQLException("존재하지 않는 동아리입니다.");
+        }
+
+        List<Student> members = new ArrayList<>();
+        String sql = String.format(
+                "SELECT * FROM students WHERE club_id = '%s' ORDER BY role DESC, student_id",
+                clubId
+        );
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                members.add(new Student(
+                        rs.getString("student_id"),
+                        rs.getString("contact"),
+                        rs.getString("name"),
+                        rs.getString("department"),
+                        Student.Role.fromString(rs.getString("role")),
+                        rs.getDate("join_date") != null ? rs.getDate("join_date").toLocalDate() : null,
+                        rs.getString("club_id")
+                ));
+            }
+        }
+        return members;
     }
 }
