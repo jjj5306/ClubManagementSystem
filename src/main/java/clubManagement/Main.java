@@ -13,8 +13,9 @@ public class Main {
         StudentMenuHandler studentMenuHandler = null;
         ClubMenuHandler clubMenuHandler = null;
         ProfessorMenuHandler professorMenuHandler = null;
-        BudgetMenuHandler budgetMenuHandler = new BudgetMenuHandler(conn, scanner);
+        BudgetMenuHandler budgetMenuHandler = null;
         ProjectMenuHandler projectMenuHandler = null;
+        ActivityMenuHandler activityMenuHandler = null;
 
         System.out.println("2020039071 조준화 Database System Term Project - Club Management System\n");
 
@@ -34,6 +35,7 @@ public class Main {
                             professorMenuHandler = new ProfessorMenuHandler(conn, scanner);
                             budgetMenuHandler = new BudgetMenuHandler(conn, scanner);
                             projectMenuHandler = new ProjectMenuHandler(conn, scanner);
+                            activityMenuHandler = new ActivityMenuHandler(conn, scanner);
                             System.out.println("Database connection successful!");
                         } catch (Exception e) {
                             System.out.println("Database connection failed: " + e.getMessage());
@@ -74,7 +76,14 @@ public class Main {
                         }
                         projectMenuHandler.handleProjectManagement();
                     }
-                    case 99 -> {
+                    case 7 -> {
+                        if (conn == null) {
+                            System.out.println("Please connect to database first!");
+                            continue;
+                        }
+                        activityMenuHandler.handleActivityManagement();
+                    }
+                    case 8 -> {
                         if (conn != null) {
                             try {
                                 conn.close();
@@ -101,7 +110,7 @@ public class Main {
         System.out.println("1. Database Connection\t2. Manage Students");
         System.out.println("3. Manage Clubs\t4. Manage Professors");
         System.out.println("5. Manage Budgets\t6. Manage Projects");
-        System.out.println("99. Quit");
+        System.out.println("7. Manage Activities\t8. Quit");
         System.out.println("------------------------------------------------------------");
     }
 }

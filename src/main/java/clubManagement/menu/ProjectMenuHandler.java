@@ -99,18 +99,23 @@ public class ProjectMenuHandler {
             return;
         }
 
-        System.out.print("새로운 프로젝트 목적: ");
+        System.out.print("새로운 프로젝트 목적 (엔터시 기존값 유지): ");
         String projectPurpose = scanner.nextLine();
+        if (!projectPurpose.trim().isEmpty()) {
+            existingProject.setProjectPurpose(projectPurpose);
+        }
 
-        System.out.print("새로운 프로젝트 주제: ");
+        System.out.print("새로운 프로젝트 주제 (엔터시 기존값 유지): ");
         String projectTopic = scanner.nextLine();
+        if (!projectTopic.trim().isEmpty()) {
+            existingProject.setProjectTopic(projectTopic);
+        }
 
-        System.out.print("새로운 사용 도구: ");
+        System.out.print("새로운 사용 도구 (엔터시 기존값 유지): ");
         String managementTool = scanner.nextLine();
-
-        existingProject.setProjectPurpose(projectPurpose);
-        existingProject.setProjectTopic(projectTopic);
-        existingProject.setManagementTool(managementTool);
+        if (!managementTool.trim().isEmpty()) {
+            existingProject.setManagementTool(managementTool);
+        }
 
         boolean success = projectService.updateProject(existingProject);
         if (success) {
